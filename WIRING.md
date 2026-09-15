@@ -64,4 +64,4 @@ lengths; a single trunk with short stubs is best practice for long runs.
 For anything beyond a breadboard prototype, use a screw-terminal or JST
 trunk with short stub drops to each sensor, and twisted-pair or shielded
 cable if runs exceed a couple of meters or share conduit with noisy loads
-(motors, relays, PSUs).
+(motors, relays, PSUs)..
