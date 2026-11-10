@@ -61,6 +61,30 @@ and reads each device by address on every cycle.
 
 ---
 
+## Skills & technologies
+
+`Arduino/C++` · `Python`
+
+
+## Repository structure
+
+Key files and folders (not exhaustive):
+
+- `LICENSE`
+- `README.md`
+- `SENSORS.md`
+- `WIRING.md`
+- `download`
+- `main.cpp`
+- `main.py`
+- `platformio.ini`
+
+
+## How it works
+
+Python source is present, including `main.py`. Review configuration and dependencies before running; use a virtual environment and follow the project's setup instructions.
+
+
 ## Maintenance & Audit
 
 - **Audit date:** 10 November 2026
