@@ -20,34 +20,66 @@ conversions happen in parallel on the bus — but each device's data must be
 read back sequentially, ~a few ms each). Bus length over ~30-50 m or heavy
 EMI environments need shielded cable and parasite-power care.
 
-## Repo layout
+## Repository layout
 
+```text
+.
+├── LICENSE
+├── README.md
+├── SENSORS.md
+├── WIRING.md
+├── download              # ignore-pattern text; not a download script
+├── main.cpp              # Arduino/PlatformIO implementation
+├── main.py               # MicroPython alternative
+└── platformio.ini        # PlatformIO environment: esp32dev
 ```
-esp32-multi-ds18b20/
-├── README.md                  this file
-├── docs/
-│   ├── WIRING.md               wiring diagram + pull-up resistor notes
-│   └── SENSORS.md               compatible sensor list + selection notes
-├── src/
-│   └── main.cpp                 Arduino/PlatformIO firmware (scan + read all)
-├── micropython/
-│   └── main.py                  MicroPython equivalent
-└── platformio.ini               PlatformIO build config
+
+The current checkout stores these files at the repository root. It does not contain the `docs/`, `src/`, or `micropython/` directories shown in some older examples. The Arduino and MicroPython programs are alternatives; use one implementation at a time.
+
+## Wiring
+
+Use [WIRING.md](WIRING.md) for the bus diagram and electrical notes. For a typical DS18B20 bus:
+
+- Connect every sensor's DQ pin to **ESP32 GPIO4**.
+- Connect all sensor VDD pins to **3.3 V** and all GND pins to ESP32 GND.
+- Fit one **4.7 kΩ pull-up** between DQ and 3.3 V for the shared bus, not one resistor per sensor.
+- Do not pull the data line up to 5 V; ESP32 GPIOs are 3.3 V logic.
+
+See [SENSORS.md](SENSORS.md) for compatible 1-Wire sensor families and limitations.
+
+## Quick start: Arduino / PlatformIO
+
+The checked-in `platformio.ini` selects the `esp32dev` board, Arduino framework, 115200-baud serial monitor, and the OneWire and DallasTemperature libraries.
+
+**Known layout issue:** PlatformIO's default source directory is `src/`, but the current `main.cpp` is at the repository root and `platformio.ini` does not override `src_dir`. A standard build may therefore omit the sketch. This pass intentionally did not move source files or change build configuration. Resolve that layout mismatch separately (for example, place a copy at `src/main.cpp` or configure `src_dir = .`) before relying on the commands below.
+
+After resolving the layout, run from the repository root:
+
+```bash
+pio run
+pio run -t upload
+pio device monitor -b 115200
 ```
 
-## Quick start (Arduino/PlatformIO)
+Install PlatformIO Core or use the PlatformIO IDE integration first. If multiple serial devices are connected, select the correct upload/monitor port using your local PlatformIO configuration.
 
-1. Wire sensors per `docs/WIRING.md`.
-2. `pio run -t upload -t monitor`
-3. Console prints each sensor's ROM address and temperature every cycle.
+## Quick start: MicroPython
 
-## Quick start (MicroPython)
+1. Wire the sensors as described in [WIRING.md](WIRING.md).
+2. Flash an ESP32-compatible MicroPython firmware image.
+3. Copy the root-level `main.py` to the board's filesystem as `main.py` (for example, with Thonny or `mpremote`).
+4. Confirm the firmware provides the `onewire` and `ds18x20` modules, then reset the board and open the serial REPL.
 
-1. Wire sensors per `docs/WIRING.md`.
-2. Flash MicroPython firmware to the ESP32.
-3. Copy `micropython/main.py` to the board as `main.py` (use `ampy`,
-   `mpremote`, or Thonny).
-4. Reset the board. REPL prints each sensor's ROM address and temperature.
+The script uses GPIO4, scans for sensor ROM addresses, waits 750 ms for a 12-bit conversion, prints each reading, and waits another five seconds before the next cycle.
+
+## Runtime behavior and limits
+
+- Both implementations use **GPIO4** for the 1-Wire data line.
+- The Arduino sketch prints at **115200 baud**, scans at startup, retries discovery every five seconds if no devices are found, and reports a read error when a previously discovered device is disconnected.
+- The Arduino sketch stores at most **32 sensor addresses**. It silently caps a larger discovered count at 32; it is not an unlimited-address implementation.
+- The MicroPython script scans at startup and retries every five seconds only when no devices were found. It reads each discovered ROM address after a 750 ms conversion wait.
+- The five-second delay is added after conversion/read work, so a 12-bit polling cycle takes roughly 5.75 seconds plus small overhead; it is not a strict five-second start-to-start interval.
+- Practical bus capacity depends on wiring, pull-up strength, cable length, noise, and sensor power. The wiring notes are guidance, not a guarantee for every installation.
 
 ## How the addressing works
 
@@ -66,24 +98,19 @@ and reads each device by address on every cycle.
 `Arduino/C++` · `Python`
 
 
-## Repository structure
+## Troubleshooting
 
-Key files and folders (not exhaustive):
+| Symptom | Checks |
+|---|---|
+| No devices detected | Confirm DQ is on GPIO4, the shared 4.7 kΩ pull-up reaches 3.3 V, and every sensor shares GND. |
+| A sensor reports a read error | Check that sensor's wiring and power; inspect the printed ROM address and connector continuity. |
+| PlatformIO builds without the sketch or fails to find source | Resolve the documented root-level `main.cpp` versus default `src/` layout mismatch first. |
+| MicroPython reports an import error | Verify the installed firmware includes `onewire` and `ds18x20`; module availability can vary by firmware build. |
+| Readings are unstable on long wiring | Review pull-up, bus topology, grounding, cable length, and interference guidance in [WIRING.md](WIRING.md). |
 
-- `LICENSE`
-- `README.md`
-- `SENSORS.md`
-- `WIRING.md`
-- `download`
-- `main.cpp`
-- `main.py`
-- `platformio.ini`
+## Verification status
 
-
-## How it works
-
-Python source is present, including `main.py`. Review configuration and dependencies before running; use a virtual environment and follow the project's setup instructions.
-
+The source files, PlatformIO configuration, sensor notes, and wiring notes were inspected for this documentation update. No PlatformIO build, MicroPython runtime check, or physical sensor test was performed. The PlatformIO source-directory mismatch remains unresolved; the upload commands above are conditional on fixing it.
 
 ## Maintenance & Audit
 
